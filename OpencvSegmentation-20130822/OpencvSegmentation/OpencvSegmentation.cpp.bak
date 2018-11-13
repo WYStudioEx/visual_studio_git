@@ -1,0 +1,252 @@
+#include <iostream>	// for standard I/O
+#include <string>   // for strings
+
+#include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat)
+#include <opencv2/highgui/highgui.hpp>  // Video write
+
+using namespace std;
+using namespace cv;
+
+#pragma comment(lib, "opencv_calib3d245d.lib")
+#pragma comment(lib, "opencv_contrib245d.lib")
+#pragma comment(lib, "opencv_core245d.lib")
+#pragma comment(lib, "opencv_features2d245d.lib")
+#pragma comment(lib, "opencv_flann245d.lib")
+#pragma comment(lib, "opencv_gpu245d.lib")
+///#pragma comment(lib, "opencv_haartraining_engined.lib")
+#pragma comment(lib, "opencv_highgui245d.lib")
+#pragma comment(lib, "opencv_imgproc245d.lib")
+#pragma comment(lib, "opencv_legacy245d.lib")
+#pragma comment(lib, "opencv_ml245d.lib")
+#pragma comment(lib, "opencv_nonfree245d.lib")
+#pragma comment(lib, "opencv_objdetect245d.lib")
+#pragma comment(lib, "opencv_photo245d.lib")
+#pragma comment(lib, "opencv_stitching245d.lib")
+#pragma comment(lib, "opencv_superres245d.lib")
+#pragma comment(lib, "opencv_ts245d.lib")
+#pragma comment(lib, "opencv_video245d.lib")
+#pragma comment(lib, "opencv_videostab245d.lib")
+
+#include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
+#include <stdio.h>
+#include <iostream>
+
+using namespace cv;
+using namespace std;
+
+
+Rect select;
+bool select_flag=false;
+Point origin;
+Mat		qtmpImgSrc;
+Mat		qtmpImgOprt;
+bool	q_isMouseDown = false;
+
+
+std::vector<cv::Point>	q_pnts4Polygon;
+/************************************************************************************************************************/
+/****                    如果采用这个onMouse()函数的话，则只能画出从左上到右下，或者从右下到左上的矩形框                    ****/
+/************************************************************************************************************************/
+//void onMouse(int event,int x,int y,int,void*)
+//{
+//    if(event==CV_EVENT_LBUTTONDOWN)
+//    {
+//        select.x=x;
+//        select.y=y;
+//        tracking=false;
+//    }
+//    else if(event==CV_EVENT_LBUTTONUP)
+//    {
+//        select.width=x-select.x;//以下2行计算出来的值要么都大于0，要么都小于0
+//        select.height=y-select.y;
+//        tracking=true;//左键完后，开始跟踪
+//    }
+//}
+
+/************************************************************************************************************************/
+/****                            如果采用这个onMouse()函数的话，则可以画出鼠标拖动矩形框的4种情形                        ****/
+/************************************************************************************************************************/
+void onMouse(int event,int x,int y,int,void*)
+{
+//Point origin;//不能在这个地方进行定义，因为这是基于消息响应的函数，执行完后origin就释放了，所以达不到效果。
+	if (q_isMouseDown)
+	{
+
+
+	}
+
+
+
+
+	if(select_flag)
+	{
+		select.x=MIN(origin.x,x);//不一定要等鼠标弹起才计算矩形框，而应该在鼠标按下开始到弹起这段时间实时计算所选矩形框
+		select.y=MIN(origin.y,y);
+		select.width=abs(x-origin.x);//算矩形宽度和高度
+		select.height=abs(y-origin.y);
+		///select&=Rect(0,0,qtmpImgSrc.cols,qtmpImgSrc.rows);//保证所选矩形框在视频显示区域之内
+		//select.width &= qtmpImgSrc.cols;
+		//select.height &= qtmpImgSrc.rows;
+	}
+
+	if(event==CV_EVENT_LBUTTONDOWN)
+	{
+		if (!q_isMouseDown)  q_isMouseDown = true;
+
+		select_flag=true;//鼠标按下的标志赋真值
+		origin=Point(x,y);//保存下来单击是捕捉到的点
+		select=Rect(x,y,0,0);//这里一定要初始化，宽和高为(0,0)是因为在opencv中Rect矩形框类内的点是包含左上角那个点的，但是不含右下角那个点
+
+		rectangle(qtmpImgOprt,cv::Rect(x, y, 2, 2),Scalar(0,0,255), 3, 8, 0);	//能够实时显示在画矩形窗口时的痕迹
+		q_pnts4Polygon.push_back(Point(x, y))
+	}
+	else if(event==CV_EVENT_LBUTTONUP)
+	{
+		if (q_isMouseDown)  q_isMouseDown = false;
+		select_flag=false;
+		rectangle(qtmpImgSrc,select,Scalar(0,0,255),3,8,0);//能够实时显示在画矩形窗口时的痕迹
+	}
+	
+}
+
+int main(int argc, unsigned char* argv[])
+{
+	//////视频文件抽取图像
+	char	c = '0';
+	const string qtmpImgPath = "F:\\00006团队设置项目\\瓶装液体药灯检机\\灯检机软件\\20130509_samples\\samples_1_1800\\Frame0255.bmp";
+	qtmpImgSrc = imread(qtmpImgPath);
+
+	qtmpImgOprt = qtmpImgSrc.clone();
+	const string qtmpWndName = "QImageShowTest";
+
+	/////建立窗口
+	 namedWindow(qtmpWndName,CV_WINDOW_NORMAL);//显示视频原图像的窗口
+	 moveWindow(qtmpWndName, 100, 100);
+	 resizeWindow(qtmpWndName, 488, 410);
+
+	//////捕捉鼠标
+	setMouseCallback(qtmpWndName,onMouse,0);
+	
+
+	while(1)
+	{
+		if (select_flag)
+		{
+			qtmpImgSrc.copyTo(qtmpImgOprt);
+
+			rectangle(qtmpImgOprt,select,Scalar(0,0,255), 3, 8, 0);	//能够实时显示在画矩形窗口时的痕迹
+			
+			//cvRectangle(qtmpImgSrc.data,cvPoint(select.x,select.y),cvPoint(select.x+select.width,select.y+select.height),cvScalar(0xff,0x00));
+		}
+
+		//显示视频图片到窗口
+		imshow(qtmpWndName,qtmpImgOprt);
+
+
+		//    select.zeros();
+		   //键盘响应
+		c=(char)waitKey(20);
+		if(27==c)//ESC键
+			break;
+	}
+
+	Mat img2Save = qtmpImgOprt(select);
+	imwrite("C:\\abc.bmp", img2Save);
+
+	return 0;
+}
+
+
+
+/*
+ void my_mouse_callback(int event,int x,int y,int flags,void* param);
+ 
+ CvRect box;
+ 
+ bool drawing_box=false;
+ 
+ // a little subroutine to draw a box on to an image
+ void draw_box(IplImage* img,CvRect rect)
+ {
+     cvRectangle(img,cvPoint(box.x,box.y),cvPoint(box.x+box.width,box.y+box.height),cvScalar(0xff,0x00));
+ }
+ 
+ 
+ int main(int argc,char** argv)
+ {  
+     box=cvRect(-1,-1,0,0);
+ 
+     IplImage* image =cvCreateImage(cvSize(200,200),IPL_DEPTH_8U,3);
+ 
+     cvZero(image);
+ 
+     IplImage* temp =cvCloneImage(image);
+ 
+     cvNamedWindow("Box example");
+     cvNamedWindow("image");
+     cvSetMouseCallback("Box example",my_mouse_callback,(void*) image);
+ 
+     while(1){
+		 cvCopy(image, temp, 0);
+        //if(drawing_box) draw_box(image,box);
+       //cvShowImage("image",image);
+         if(drawing_box) draw_box(temp,box);
+         cvShowImage("Box example",temp);
+     
+         if(cvWaitKey(15)==27) break;
+     }
+ 
+     cvReleaseImage(&image);
+     cvReleaseImage(&temp);
+     cvDestroyWindow("Box example");
+     cvDestroyWindow("image");
+ 
+     return 0;
+ 
+     
+ }
+ //event 指定鼠标事件类型
+ //int x y 为事件发生时鼠标位置的x,y坐标值。
+ //第四个参数flags 制定了事件在事件发生时的不同状态
+ void my_mouse_callback(int event,int x,int y,int flags,void* param)
+ {
+     IplImage* image= (IplImage*) param;
+     switch(event)
+     {
+     case CV_EVENT_MOUSEMOVE:
+         {
+             if(drawing_box)
+             {
+                 box.width=x-box.x;
+                 box.height=y-box.y;
+             }
+         }
+         break;
+     case CV_EVENT_LBUTTONDOWN:
+         {
+             drawing_box=true;
+             box=cvRect(x,y,0,0);
+         }
+         break;
+     case CV_EVENT_LBUTTONUP:
+         {
+             drawing_box=false;
+             if(box.width<0)
+             {
+                 box.x=box.x+box.width;
+                 box.width*=-1;
+ 
+             }
+             if(box.height<0)
+             {
+                 box.y+=box.height;
+                 box.height*=-1;
+             }
+             draw_box(image,box);
+         }
+         break;
+     }
+ }
+ */

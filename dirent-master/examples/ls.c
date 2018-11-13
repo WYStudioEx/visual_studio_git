@@ -84,7 +84,7 @@ list_directory(
                 break;
 
             default:
-                printf ("%s*\n", ent->d_name);
+				printf("%s*\n", ent->d_name);
             }
         }
 
